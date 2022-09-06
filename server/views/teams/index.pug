@@ -1,0 +1,15 @@
+doctype=html
+html
+    head
+        title Express.js + Pug
+    body
+        h1 Welcome to Team section
+        table
+            tbody 
+                tr 
+                    th Nr 
+                    th Nazwa zespołu
+                each team in teams
+                    tr
+                        each val, key in team
+                            td #{val}
