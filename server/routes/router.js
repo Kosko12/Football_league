@@ -12,9 +12,11 @@ router.post('/team', mainController.postTeam);
 router.post('/match', mainController.postMatch);
 
 router.get('/stadium', mainController.getStadium);
+router.get('/stadium/:name', mainController.getStadiumByName);
 router.post('/stadium', mainController.postStadium);
 
 router.get('/city', mainController.getCity);
+router.get('/city-add-info', mainController.getCitiesWithAdditionalInfo);
 router.post('/city', mainController.postCity)
 
 router.post('/sponsor', mainController.postSponsor)
@@ -24,6 +26,8 @@ router.post('/referee', mainController.postReferee)
 router.post('/contract', mainController.postContract)
 
 router.post('/player', mainController.postPlayer)
+router.get('/players', mainController.getPlayers)
+
 
 router.post('/player-contract', mainController.postPlayerContract)
 
