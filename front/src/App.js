@@ -1,12 +1,13 @@
-import './App.css';
-import './css/output.css';
+import "./App.css";
+import "./css/output.css";
 import { BrowserRouter as Router, Routes, Link, Route } from "react-router-dom";
-import { Menu , Badge, Button} from "antd";
+import { Menu, Badge, Button } from "antd";
 import Home from "./pages/Home";
 import axios from "axios";
+import Locations from "./pages/Locations";
+import Players from './pages/Players';
 
-
-axios.defaults.baseURL = 'http://localhost:5450';
+axios.defaults.baseURL = "http://localhost:5450";
 
 function App() {
   return (
@@ -14,15 +15,19 @@ function App() {
       <div>
         <Menu mode="horizontal" className="bg-richwhite">
           <Menu.Item key="menuHome">
-            <Link to="/" className="text-white">Tabela</Link>
+            <Link to="/" className="text-white">
+              Tabela
+            </Link>
           </Menu.Item>
           <Menu.Item>
-            <Link to="/menu">Menu</Link>
+            <Link to="/locations" className="p-2">
+              Lokalizacje
+            </Link>
           </Menu.Item>
           <Menu.Item>
-            <Badge count={1} size="small">
-              <Link to="/cart" className="p-2">Rezerwacje</Link>
-            </Badge>
+            <Link to="/players" className="p-2">
+              Zawodnicy
+            </Link>
           </Menu.Item>
           <Menu.Item>
             <Button onClick={() => null}>Wyloguj</Button>
@@ -30,6 +35,8 @@ function App() {
         </Menu>
         <Routes>
           <Route index element={<Home />} />
+          <Route path="/locations" element={<Locations />} />
+          <Route path="/players" element={<Players />} />
         </Routes>
       </div>
     </Router>

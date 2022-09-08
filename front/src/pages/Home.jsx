@@ -21,8 +21,9 @@ const Home = () => {
   const [showAddTeamForm, setShowAddTeamForm] = useState(false);
   const [showAddNewCity, setAddNewCity] = useState(false);
   const [cityOptions, setCityOptions] = useState([]);
+  const [stadiumOptions, setStadiumOptions] = useState([]);
   const [showAddNewStadium, setAddNewStadium] = useState(false);
-
+  const [currentCityOption, setCurrentCityOption] = useState(null);
 
   const dataSource = [
     {
@@ -82,11 +83,23 @@ const Home = () => {
     axios.post('/team', data).then(res => {console.log(res)})
   }
 
-
+  const handleCityCheckbox = () => {
+    if(showAddNewCity){
+      setCityOptions([]);
+    }
+    setAddNewCity(!showAddNewCity);
+  }
+  const handleStadiumCheckbox = () => {
+    if(showAddNewStadium){
+      setStadiumOptions([]);
+    }
+    setAddNewStadium(!showAddNewStadium);
+  }
 
   useEffect( () => {  
     const getCityOptions = () => {
-        axios.get('/city').then(res => {
+        axios.get('/city')
+        .then(res => {
             console.log(res.data.arrayToReturns)
             let newOptArray = [];
             for (const x of res.data.arrayToReturn){
@@ -96,12 +109,42 @@ const Home = () => {
             console.log(newOptArray);
             setCityOptions(newOptArray);
         })
+        .catch(e => {
+          window.alert(e.message);
+
+        }) 
     }
+    const getStadiumOptions = () => {
+      console.log(currentCityOption);
+      if(currentCityOption !== null){
+        axios.get(`/stadium/${currentCityOption}`)
+        .then(res => {
+          console.log(res.data.arrayToReturns)
+          let newOptArray = [];
+          for (const x of res.data.arrayToReturn){
+              console.log(x);
+              newOptArray.push({label: x.stadiumName,value: x.stadiumName})
+          }
+          console.log(newOptArray);
+          setStadiumOptions(newOptArray);
+      })
+      .catch(e => {
+        window.alert(e.message);
+      }) 
+      }
+      
+  }
     if(!showAddNewCity){
+      if(!showAddNewStadium){
+        console.log('here');
+        getStadiumOptions();
+      }
        return getCityOptions();
     }
     return; 
-  }, [showAddNewCity])
+  }, [showAddNewCity, showAddNewStadium, currentCityOption])
+
+  
 
   return (
     <>
@@ -109,7 +152,7 @@ const Home = () => {
         {
             showAddTeamForm ? 
             <div>
-                <Button className="flex mx-auto" onClick={() => {setShowAddTeamForm(!showAddTeamForm)}}>Schowaj formularz</Button>
+                <Button className="flex mx-auto my-2" onClick={() => {setShowAddTeamForm(!showAddTeamForm)}}>Schowaj formularz</Button>
                 <Form
                     name="addTeam"
                     labelCol={{ span: 8 }}
@@ -120,19 +163,19 @@ const Home = () => {
                     <Form.Item
                         label="Nazwa zespołu"
                         name="name"
-                        rules={[{ required: true, message: "Please select date!" }]}
+                        rules={[{ required: true, message: "Proszę podać nazwę klubu!" }]}
                     >
                         <Input/>
                     </Form.Item>
                     <div className="w-full flex flex-col items-center">
-                        <Checkbox className="flex mx-auto" checked={showAddNewCity} onChange={() => {setAddNewCity(!showAddNewCity)}}>Dodaj nowe miasto</Checkbox>
+                        <Checkbox className="flex mx-auto py-2" checked={showAddNewCity} onChange={handleCityCheckbox}>Dodaj nowe miasto</Checkbox>
                     </div>
                     {
                         showAddNewCity ?
                         <Form.Item
                             label="Nazwa miasta"
                             name="city"
-                            rules={[{ required: true, message: "Please select date!" }]}
+                            rules={[{ required: true, message: "Proszę podać nazwę miasta!" }]}
                         >
                             <Input/>
                         </Form.Item>
@@ -140,20 +183,34 @@ const Home = () => {
                         <Form.Item
                             label="Nazwa miasta"
                             name="city"
-                            rules={[{ required: true, message: "Please select date!" }]}
+                            rules={[{ required: true, message: "Proszę podać nazwę miasta!" }]}
+                            
                         >
-                            <Select options={cityOptions}/>
+                            <Select onChange={(val) => {setCurrentCityOption(val);}} options={cityOptions}/>
                         </Form.Item>
                     }
-                    
-
-                    <Form.Item
+                    <div className="w-full flex flex-col items-center">
+                        <Checkbox className="flex mx-auto py-2" checked={showAddNewStadium} onChange={handleStadiumCheckbox}>Dodaj nowy stadion</Checkbox>
+                    </div>
+                    {
+                      showAddNewStadium ?
+                      <Form.Item
                         label="Nazwa stadionu"
                         name="stadium"
-                        rules={[{ required: true, message: "Please select date!" }]}
+                        rules={[{ required: true, message: "Proszę podać nazwę stadionu!" }]}
                     >
                         <Input/>
                     </Form.Item>
+                    :
+                    <Form.Item
+                        label="Nazwa stadionu"
+                        name="stadium"
+                        rules={[{ required: true, message: "Proszę podać nazwę stadionu!" }]}
+                    >
+                        <Select options={stadiumOptions}/>
+                    </Form.Item>
+                    }
+                    
                     <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
                         <Button type="primary" className="bg-blue-700" htmlType="submit">
                             Submit
