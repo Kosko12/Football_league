@@ -24,27 +24,9 @@ const Home = () => {
   const [stadiumOptions, setStadiumOptions] = useState([]);
   const [showAddNewStadium, setAddNewStadium] = useState(false);
   const [currentCityOption, setCurrentCityOption] = useState(null);
-
-  const dataSource = [
-    {
-      key: "1",
-      team: "Wisła Płock",
-      match: 8,
-      points: 17,
-      win: 5,
-      draw: 2,
-      lost: 1,
-    },
-    {
-      key: "2",
-      team: "Legia Warszawa",
-      match: 8,
-      points: 17,
-      win: 5,
-      draw: 2,
-      lost: 1,
-    },
-  ];
+  const [dataSource, setMatchDataSource] =  useState([]);
+  const [forceReload, setForceReload] = useState(false);
+  
   const columns = [
     {
       title: "Zespół",
@@ -53,31 +35,32 @@ const Home = () => {
     },
     {
       title: "Mecze",
-      dataIndex: "match",
-      key: "match",
+      dataIndex: "matches",
+      key: "matces",
     },
     {
-      title: "Punkty",
-      dataIndex: "points",
-      key: "points",
-    },
-    {
-      title: "Zwycięstwa",
-      dataIndex: "win",
-      key: "win",
-    },
-    {
-      title: "Remisy",
-      dataIndex: "draw",
-      key: "draw",
-    },
-    {
-      title: "Przegrane",
-      dataIndex: "lost",
-      key: "lost",
+      title: "Stadion",
+      dataIndex: "stadium",
+      key: "stadium",
+    },{
+      title: 'Action',
+      key: 'action',
+      render: (_, record) => (
+        <Button onClick={() => {
+          handleRemoveTeam(record.team)
+        }}>
+          Usuń
+        </Button>
+      ),
     },
   ];
-
+  const handleRemoveTeam = async (name) => {
+    await axios.delete("/team", {data : {
+        name: name
+    }}).then((res) => {
+    });
+    setForceReload(!forceReload);
+};
   const createTeam = (data) => {
     console.log(data);
     axios.post('/team', data).then(res => {console.log(res)})
@@ -97,16 +80,35 @@ const Home = () => {
   }
 
   useEffect( () => {  
+    const getTeams = () => {
+      axios
+        .get(`/teams`)
+        .then((res) => {
+          console.log(res.data.arrayToReturns);
+          let newOptArray = [];
+          for (const x of res.data.arrayToReturn) {
+            console.log(x);
+            newOptArray.push({
+              team: x.team,
+              matches: x.matches,
+              stadium: x.stadium,
+            });
+          }
+          console.log(newOptArray);
+          setMatchDataSource([...newOptArray]);
+        })
+        .catch((e) => {
+          window.alert(e.message);
+        });
+    }
+
     const getCityOptions = () => {
         axios.get('/city')
         .then(res => {
-            console.log(res.data.arrayToReturns)
             let newOptArray = [];
             for (const x of res.data.arrayToReturn){
-                console.log(x);
                 newOptArray.push({label: x.clubName,value: x.clubName})
             }
-            console.log(newOptArray);
             setCityOptions(newOptArray);
         })
         .catch(e => {
@@ -134,6 +136,8 @@ const Home = () => {
       }
       
   }
+
+    getTeams()
     if(!showAddNewCity){
       if(!showAddNewStadium){
         console.log('here');
@@ -142,7 +146,7 @@ const Home = () => {
        return getCityOptions();
     }
     return; 
-  }, [showAddNewCity, showAddNewStadium, currentCityOption])
+  }, [showAddNewCity, showAddNewStadium, currentCityOption, forceReload])
 
   
 

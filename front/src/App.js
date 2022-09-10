@@ -6,6 +6,9 @@ import Home from "./pages/Home";
 import axios from "axios";
 import Locations from "./pages/Locations";
 import Players from './pages/Players';
+import Matches from './pages/Matches'
+import Referees from './pages/Referees'
+import Sponsors from './pages/Sponsors'
 
 axios.defaults.baseURL = "http://localhost:5450";
 
@@ -30,13 +33,28 @@ function App() {
             </Link>
           </Menu.Item>
           <Menu.Item>
-            <Button onClick={() => null}>Wyloguj</Button>
+            <Link to="/referees" className="p-2">
+              Sędziowie
+            </Link>
+          </Menu.Item>
+          <Menu.Item>
+            <Link to="/sponsors" className="p-2">
+              Sponsorzy
+            </Link>
+          </Menu.Item>
+          <Menu.Item>
+            <Link to="/matches" className="p-2">
+              Mecze
+            </Link>
           </Menu.Item>
         </Menu>
         <Routes>
           <Route index element={<Home />} />
           <Route path="/locations" element={<Locations />} />
           <Route path="/players" element={<Players />} />
+          <Route path="/referees" element={<Referees />} />
+          <Route path="/matches" element={<Matches />} />
+          <Route path="/sponsors" element={<Sponsors />} />
         </Routes>
       </div>
     </Router>

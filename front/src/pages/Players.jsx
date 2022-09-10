@@ -24,8 +24,14 @@ const Players = () => {
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [cityOptions, setCityOptions] = useState([]);
   const [playerDataSource, setPlayerDataSource] = useState([]);
+  const [forceReload, setForceReload] = useState(false);
 
   const playerColumns = [
+    {
+      title: "ID",
+      dataIndex: "id",
+      key: "id",
+    },
     {
       title: "Imię i nazwisko",
       dataIndex: "name",
@@ -42,11 +48,6 @@ const Players = () => {
       key: "team",
     },
     {
-      title: "Liczba bramek",
-      dataIndex: "goals",
-      key: "goals",
-    },
-    {
       title: "Wynagrodzenie",
       dataIndex: "salary",
       key: "salary",
@@ -55,8 +56,25 @@ const Players = () => {
       title: "Koniec kontraktu",
       dataIndex: "contractEnds",
       key: "contractEnds",
+    },,{
+      title: 'Action',
+      key: 'action',
+      render: (_, record) => (
+        <Button onClick={() => {
+          handleRemovePlayer(record.id)
+        }}>
+          Usuń
+        </Button>
+      ),
     },
   ];
+  const handleRemovePlayer = async (id) => {
+      await axios.delete("/player", {data : {
+          id: id
+      }}).then((res) => {
+      });
+      setForceReload(!forceReload);
+  };
   const roleOptions = [
     {
       label: "BR",
@@ -96,8 +114,8 @@ const Players = () => {
     setShowAddPlayerModal(!showAddPlayerModal);
   };
 
-  const onAddPlayerFormSubmit = (value) => {
-    axios.post("/player", value).then((res) => {
+  const onAddPlayerFormSubmit = async(value) => {
+    await axios.post("/player", value).then((res) => {
       console.log(res);
     });
     setShowAddPlayerModal(!showAddPlayerModal);
@@ -115,7 +133,7 @@ const Players = () => {
             newOptArray.push({ label: x.teamName, value: x.teamName });
           }
           console.log(newOptArray);
-          setCityOptions(newOptArray);
+          setCityOptions([...newOptArray]);
         })
         .catch((e) => {
           window.alert(e.message);
@@ -125,7 +143,7 @@ const Players = () => {
     if (showAddPlayerModal) {
       return getCityOptions();
     }
-  }, [showAddPlayerModal]);
+  }, [showAddPlayerModal, forceReload]);
 
   useEffect(() => {
     const getPlayerInfo = () => {
@@ -137,9 +155,9 @@ const Players = () => {
           for (const x of res.data.arrayToReturn) {
             console.log(x);
             newOptArray.push({
+              id: x.id,
               name: x.playerName,
               age: x.age,
-              goals: x.goals | "brak danych",
               team: x.teamName,
               salary: x.salary,
               contractEnds:
@@ -155,7 +173,7 @@ const Players = () => {
     };
 
     return getPlayerInfo();
-  }, []);
+  }, [showAddPlayerModal, forceReload]);
 
   return (
     <>

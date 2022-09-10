@@ -24,6 +24,7 @@ const Locations = () => {
   const [cityOptions, setCityOptions] = useState([]);
   const [cityDataSource, setCityDataSource] = useState([]);
   const [stadiumDataSource, setStadiumDataSource] = useState([]);
+  const [forceReload, setForceReload] = useState(false);
 
   const cityColumns = [
     {
@@ -40,25 +41,64 @@ const Locations = () => {
       title: "Zespoły",
       dataIndex: "teams",
       key: "teams",
+    },{
+      title: 'Action',
+      key: 'action',
+      render: (_, record) => (
+        <Button onClick={() => {
+          handleRemoveCity(record.city)
+        }}>
+          Usuń
+        </Button>
+      ),
     },
   ];
+  const handleRemoveCity = async (name) => {
+      await axios.delete("/city", {data : {
+          name: name
+      }}).then((res) => {
+      });
+      setForceReload(!forceReload);
+  };
   const stadiumColumns = [
     {
+      title: "Nazwa stadionu",
+      dataIndex: "name",
+      key: "name",
+    },
+    {
+      title: "Pojemność kibiców gospodarzy",
+      dataIndex: "hostCapacity",
+      key: "hostCapacity",
+    },
+    {
+      title: "Pojemność kibiców gości",
+      dataIndex: "guestCapacity",
+      key: "guestCapacity",
+    },
+    {
       title: "Miasto",
-      dataIndex: "team",
-      key: "team",
-    },
-    {
-      title: "Stadiony",
-      dataIndex: "stadiums",
-      key: "stadiums",
-    },
-    {
-      title: "Zespoły",
-      dataIndex: "teams",
-      key: "teams",
+      dataIndex: "cityName",
+      key: "cityName",
+    },{
+      title: 'Action',
+      key: 'action',
+      render: (_, record) => (
+        <Button onClick={() => {
+          handleRemoveStadium(record.name)
+        }}>
+          Usuń
+        </Button>
+      ),
     },
   ];
+  const handleRemoveStadium = async (name) => {
+      await axios.delete("/stadium", {data : {
+          name: name
+      }}).then((res) => {
+      });
+      setForceReload(!forceReload);
+  };
 
   const handleAddCity = () => {};
 
@@ -72,14 +112,12 @@ const Locations = () => {
 
   const onAddCityFormSubmit = (value) => {
     axios.post("/city", value).then((res) => {
-      console.log(res);
     });
     setShowAddCityModal(!showAddCityModal);
   };
 
   const onAddStadiumFormSubmit = (value) => {
     axios.post("/stadium", value).then((res) => {
-      console.log(res);
     });
     setShowAddStadiumModal(!showAddStadiumModal);
   };
@@ -89,13 +127,10 @@ const Locations = () => {
       axios
         .get("/city")
         .then((res) => {
-          console.log(res.data.arrayToReturns);
           let newOptArray = [];
           for (const x of res.data.arrayToReturn) {
-            console.log(x);
             newOptArray.push({ label: x.clubName, value: x.clubName });
           }
-          console.log(newOptArray);
           setCityOptions(newOptArray);
         })
         .catch((e) => {
@@ -107,29 +142,48 @@ const Locations = () => {
       axios
         .get(`/city-add-info`)
         .then((res) => {
-          console.log(res.data.arrayToReturns);
           let newOptArray = [];
           for (const x of res.data.arrayToReturn) {
-            console.log(x);
             newOptArray.push({
               city: x.cityName,
               stadiums: x.stadiums,
               teams: x.teams,
             });
           }
-          console.log(newOptArray);
           setCityDataSource(newOptArray);
         })
         .catch((e) => {
           window.alert(e.message);
         });
     };
-
+    const getStadiumInfo = () => {
+      axios
+        .get(`/stadium`)
+        .then((res) => {
+          console.log(res.data.arrayToReturns);
+          let newOptArray = [];
+          for (const x of res.data.arrayToReturn) {
+            console.log(x);
+            newOptArray.push({
+              name: x.stadiumName,
+              hostCapacity: x.hostCapacity,
+              guestCapacity: x.guestCapacity,
+              cityName: x.cityName
+            });
+          }
+          console.log(newOptArray);
+          setStadiumDataSource(newOptArray);
+        })
+        .catch((e) => {
+          window.alert(e.message);
+        });
+    };
+    getStadiumInfo();
     getCitiesInfo();
     if (showAddStadiumModal) {
       return getCityOptions();
     }
-  }, [showAddStadiumModal]);
+  }, [showAddStadiumModal, forceReload]);
 
   return (
     <>
@@ -198,6 +252,7 @@ const Locations = () => {
             Zamknij
           </Button>,
         ]}
+        width={900}
       >
         <Form
           name="addStadium"
@@ -214,6 +269,20 @@ const Locations = () => {
             ]}
           >
             <Input />
+          </Form.Item>
+          <Form.Item
+            label="Liczność sektoru gospodarzy"
+            name="hostCapacity"
+            rules={[{ required: true, message: "Proszę podać liczbę!" }]}
+          >
+            <InputNumber min={0} />
+          </Form.Item>
+          <Form.Item
+            label="Liczność sektoru gości"
+            name="guestCapacity"
+            rules={[{ required: true, message: "Proszę podać liczbę!" }]}
+          >
+            <InputNumber min={0} />
           </Form.Item>
           <Form.Item
             label="Lokalizacja"
