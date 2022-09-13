@@ -248,8 +248,49 @@ exports.postStadium = async(req, res, next) => {
 
   try {
     const writeQuery = `
+    MATCH (c: City {name: '${req.body.cityName}'})
     MERGE (s: Stadium {name:'${req.body.name}'})
-    MERGE (c: City {name: '${req.body.cityName}'})
+    MERGE (s)-[:LOCATED_IN]->(c)
+    MERGE (sec1: Sector {name: 'host', capacity: ${req.body.hostCapacity}})
+    MERGE (sec2: Sector {name: 'guest', capacity: ${req.body.guestCapacity}})
+    MERGE (sec1)-[:PART_OF]->(s)
+    MERGE (sec2)-[:PART_OF]->(s)
+    return s`;
+
+    // Write transactions allow the driver to handle retries and transient errors
+    const writeResult = await session.writeTransaction((tx) =>
+      tx.run(writeQuery)
+    );
+    writeResult.records.forEach((record) => {
+      const t = record.toObject();
+      console.log(`New sth: ${t}`);
+      arrayToReturn.push(record.toObject());
+
+    });
+    res.status(200).json({
+      'data': arrayToReturn
+  })
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({
+      message: err.message,
+    });
+  } finally {
+    session.close();
+  }
+};
+exports.patchStadium = async(req, res, next) => {
+  const session = driver.session({ database: "neo4j" });
+  let arrayToReturn = [];
+
+  try {
+    const writeQuery = `
+    MATCH (s: Stadium)
+    where ID(s) = ${req.body.id}
+    Match (sectorsd)-[reld1:PART_OF]->(s)
+    match (s)-[reld2:LOCATED_IN]->()
+    MATCH (c: City {name: 'Kraków'})
+    delete reld1, reld2, sectorsd
     MERGE (s)-[:LOCATED_IN]->(c)
     MERGE (sec1: Sector {name: 'host', capacity: ${req.body.hostCapacity}})
     MERGE (sec2: Sector {name: 'guest', capacity: ${req.body.guestCapacity}})
@@ -288,6 +329,7 @@ exports.getStadium = async (req, res, next) => {
     MATCH (s2:Sector {name: 'guest'})-[:PART_OF]->(t)
     MATCH (t)-[:LOCATED_IN]->(c:City)
     return distinct(t.name) as stadiumName,
+    ID(t) as id,
     s1.capacity as hostCapacity,
     s2.capacity as guestCapacity,
     c.name as cityName
@@ -756,11 +798,9 @@ exports.postPlayer = async(req, res, next) => {
   // return;
   try {
     const writeQuery = `
-    MATCH (r1: Player)
-    WITH count(r1) + 1 as counter
     MATCH (t: Team {name: '${req.body.teamName}'})
-    CREATE (p: Player {name: '${req.body.playerName}', plId: 'PL'+counter, age: ${req.body.age}})
-    CREATE (p)-[rel: CONTRACTED_WITH {role: '${req.body.role}', salary: ${req.body.salary}, signedAt: datetime('${req.body.contractPeriod[0]}'), endsAt: datetime('${req.body.contractPeriod[1]}')}]->(t)
+    MERGE (p: Player {name: '${req.body.playerName}', age: ${req.body.age}})
+    MERGE (p)-[rel: CONTRACTED_WITH {role: '${req.body.role}', salary: ${req.body.salary}, signedAt: datetime('${req.body.contractPeriod[0]}'), endsAt: datetime('${req.body.contractPeriod[1]}')}]->(t)
     return t, p, rel`;
 
     // Write transactions allow the driver to handle retries and transient errors
@@ -785,7 +825,35 @@ exports.postPlayer = async(req, res, next) => {
     session.close();
   }
 };
+exports.patchPlayer = async(req,res, next) => {
+  const session = driver.session({ database: "neo4j" });
+  let arrayToReturn = [];
+  try {
+    const readQuery =  `
+    MATCH (p1: Player)
+    where ID(p1) = ${req.body.id}
+    MATCH (t: Team {name: '${req.body.teamName}'})
+    MATCH (p1)-[r:CONTRACTED_WITH]->()
+    DELETE r
+    MERGE (p1)-[rel: CONTRACTED_WITH {role: '${req.body.role}', salary: ${req.body.salary}, signedAt: datetime('${req.body.contractPeriod[0]}'), endsAt: datetime('${req.body.contractPeriod[1]}')}]->(t)
+    return t, p1, rel
+    `;
+    const readResult = await session.readTransaction((tx) =>
+      tx.run(readQuery)
+    );
+    readResult.records.forEach((record) => {
+      arrayToReturn.push(record.toObject());
+    });
+    res.status(201).json({
+      arrayToReturn
+    })
+  } catch (error) {
+    console.error("Something went wrong: ", error);
+  } finally {
+    session.close();
 
+  }
+}
 exports.getPlayers = async(req,res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
