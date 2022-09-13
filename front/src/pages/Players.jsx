@@ -22,7 +22,8 @@ const { RangePicker } = DatePicker;
 const Players = () => {
   const [playerOptions, setPlayerOptions] = useState([]);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
-  const [cityOptions, setCityOptions] = useState([]);
+  const [showEditPlayerModal, setShowEditPlayerModal] = useState(false);
+  const [teamOptions, setTeamOptions] = useState([]);
   const [playerDataSource, setPlayerDataSource] = useState([]);
   const [forceReload, setForceReload] = useState(false);
 
@@ -56,24 +57,31 @@ const Players = () => {
       title: "Koniec kontraktu",
       dataIndex: "contractEnds",
       key: "contractEnds",
-    },,{
-      title: 'Action',
-      key: 'action',
+    },
+    ,
+    {
+      title: "Action",
+      key: "action",
       render: (_, record) => (
-        <Button onClick={() => {
-          handleRemovePlayer(record.id)
-        }}>
+        <Button
+          onClick={() => {
+            handleRemovePlayer(record.id);
+          }}
+        >
           Usuń
         </Button>
       ),
     },
   ];
   const handleRemovePlayer = async (id) => {
-      await axios.delete("/player", {data : {
-          id: id
-      }}).then((res) => {
-      });
-      setForceReload(!forceReload);
+    await axios
+      .delete("/player", {
+        data: {
+          id: id,
+        },
+      })
+      .then((res) => {});
+    setForceReload(!forceReload);
   };
   const roleOptions = [
     {
@@ -113,16 +121,26 @@ const Players = () => {
   const handleAddPlayerCancel = () => {
     setShowAddPlayerModal(!showAddPlayerModal);
   };
+  const handleEditPlayerCancel = () => {
+    setShowEditPlayerModal(!showEditPlayerModal);
+  };
 
-  const onAddPlayerFormSubmit = async(value) => {
+  const onAddPlayerFormSubmit = async (value) => {
     await axios.post("/player", value).then((res) => {
       console.log(res);
     });
     setShowAddPlayerModal(!showAddPlayerModal);
   };
+  const onEditPlayerFormSubmit = async (value) => {
+    await axios.patch("/player", value).then((res) => {
+      console.log(res);
+    });
+    setShowEditPlayerModal(!showEditPlayerModal);
+    setForceReload(!forceReload);
+  };
 
   useEffect(() => {
-    const getCityOptions = () => {
+    const getTeamOptions = () => {
       axios
         .get("/team")
         .then((res) => {
@@ -133,16 +151,14 @@ const Players = () => {
             newOptArray.push({ label: x.teamName, value: x.teamName });
           }
           console.log(newOptArray);
-          setCityOptions([...newOptArray]);
+          setTeamOptions([...newOptArray]);
         })
         .catch((e) => {
           window.alert(e.message);
         });
     };
 
-    if (showAddPlayerModal) {
-      return getCityOptions();
-    }
+    return getTeamOptions();
   }, [showAddPlayerModal, forceReload]);
 
   useEffect(() => {
@@ -178,16 +194,27 @@ const Players = () => {
   return (
     <>
       <Table dataSource={playerDataSource} columns={playerColumns} />
-      <Button
-        className="flex mx-auto"
-        onClick={() => {
-          setShowAddPlayerModal(!showAddPlayerModal);
-        }}
-      >
-        Dodaj zawodnika
-      </Button>
+      <div className="flex mx-auto">
+        <Button
+          className="flex mx-auto"
+          onClick={() => {
+            setShowAddPlayerModal(!showAddPlayerModal);
+          }}
+        >
+          Dodaj zawodnika
+        </Button>
+        <Button
+          className="flex mx-auto"
+          onClick={() => {
+            setShowEditPlayerModal(!showEditPlayerModal);
+          }}
+        >
+          Zmiana kontraktu zawodnika
+        </Button>
+      </div>
+      {/* DOdaj zawodnika */}
       <Modal
-        title="Dodaj miasto"
+        title="Dodaj zawodnika"
         open={showAddPlayerModal}
         // onOk={handleAddCity}
         onCancel={handleAddPlayerCancel}
@@ -208,14 +235,14 @@ const Players = () => {
           <Form.Item
             label="Imię i nazwisko"
             name="playerName"
-            rules={[{ required: true, message: "Proszę podać nazwę miasta!" }]}
+            rules={[{ required: true, message: "Proszę wypełnić!" }]}
           >
             <Input />
           </Form.Item>
           <Form.Item
             label="Wiek"
             name="age"
-            rules={[{ required: true, message: "Proszę podać nazwę miasta!" }]}
+            rules={[{ required: true, message: "Proszę wypełnić!" }]}
             defaultValue={18}
           >
             <InputNumber min={16} defaultValue={18} max={100} />
@@ -223,14 +250,78 @@ const Players = () => {
           <Form.Item
             label="Zespół"
             name="teamName"
-            rules={[{ required: true, message: "Proszę podać nazwę miasta!" }]}
+            rules={[{ required: true, message: "Proszę wypełnić!" }]}
           >
-            <Select options={cityOptions} />
+            <Select options={teamOptions} />
           </Form.Item>
           <Form.Item
             label="Pozycja"
             name="role"
-            rules={[{ required: true, message: "Proszę podać nazwę miasta!" }]}
+            rules={[{ required: true, message: "Proszę wypełnić!" }]}
+          >
+            <Select options={roleOptions} />
+          </Form.Item>
+          <Form.Item
+            label="Wynagrodzenie"
+            name="salary"
+            rules={[{ required: true, message: "Proszę podać wynagrodznie!" }]}
+          >
+            <InputNumber min={2400} />
+          </Form.Item>
+          <Form.Item
+            label="Okres trwania"
+            name="contractPeriod"
+            rules={[
+              { required: true, message: "Proszę podać zakres kontraktu!" },
+            ]}
+          >
+            <RangePicker />
+          </Form.Item>
+          <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
+            <Button type="primary" className="bg-blue-700" htmlType="submit">
+              Dodaj
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+      {/* Edytuj zawodnika */}
+      <Modal
+        title="Edytuj zawodnika"
+        open={showEditPlayerModal}
+        // onOk={handleAddCity}
+        onCancel={handleEditPlayerCancel}
+        width={600}
+        footer={[
+          <Button key="back" onClick={handleEditPlayerCancel}>
+            Zamknij
+          </Button>,
+        ]}
+      >
+        <Form
+          name="editPlayer"
+          labelCol={{ span: 12 }}
+          wrapperCol={{ span: 12 }}
+          className="bg-dutchwhite p-4"
+          onFinish={onEditPlayerFormSubmit}
+        >
+          <Form.Item
+            label="Id zawodnika"
+            name="id"
+            rules={[{ required: true, message: "Proszę wypełnić!" }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Zespół"
+            name="teamName"
+            rules={[{ required: true, message: "Proszę wypełnić!" }]}
+          >
+            <Select options={teamOptions} />
+          </Form.Item>
+          <Form.Item
+            label="Pozycja"
+            name="role"
+            rules={[{ required: true, message: "Proszę wypełnić!" }]}
           >
             <Select options={roleOptions} />
           </Form.Item>

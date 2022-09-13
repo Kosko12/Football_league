@@ -21,6 +21,7 @@ const { Option } = Select;
 const Locations = () => {
   const [showAddCityModal, setShowAddCityModal] = useState(false);
   const [showAddStadiumModal, setShowAddStadiumModal] = useState(false);
+  const [showEditStadiumModal, setShowEditStadiumModal] = useState(false);
   const [cityOptions, setCityOptions] = useState([]);
   const [cityDataSource, setCityDataSource] = useState([]);
   const [stadiumDataSource, setStadiumDataSource] = useState([]);
@@ -67,6 +68,11 @@ const Locations = () => {
       key: "name",
     },
     {
+      title: "Id stadionu",
+      dataIndex: "id",
+      key: "id",
+    },
+    {
       title: "Pojemność kibiców gospodarzy",
       dataIndex: "hostCapacity",
       key: "hostCapacity",
@@ -110,6 +116,10 @@ const Locations = () => {
     setShowAddStadiumModal(!showAddStadiumModal);
   };
 
+  const handleEditStadiumCancel = () => {
+    setShowEditStadiumModal(!showEditStadiumModal);
+  };
+
   const onAddCityFormSubmit = (value) => {
     axios.post("/city", value).then((res) => {
     });
@@ -120,6 +130,12 @@ const Locations = () => {
     axios.post("/stadium", value).then((res) => {
     });
     setShowAddStadiumModal(!showAddStadiumModal);
+  };
+
+  const onEditStadiumFormSubmit = (value) => {
+    axios.patch("/stadium", value).then((res) => {
+    });
+    setShowEditStadiumModal(!showEditStadiumModal);
   };
 
   useEffect(() => {
@@ -166,6 +182,7 @@ const Locations = () => {
             console.log(x);
             newOptArray.push({
               name: x.stadiumName,
+              id: x.id,
               hostCapacity: x.hostCapacity,
               guestCapacity: x.guestCapacity,
               cityName: x.cityName
@@ -180,9 +197,7 @@ const Locations = () => {
     };
     getStadiumInfo();
     getCitiesInfo();
-    if (showAddStadiumModal) {
-      return getCityOptions();
-    }
+    return getCityOptions();
   }, [showAddStadiumModal, forceReload]);
 
   return (
@@ -208,8 +223,17 @@ const Locations = () => {
         >
           Dodaj stadion
         </Button>
+        <Button
+          className="flex mx-auto"
+          onClick={() => {
+            setShowEditStadiumModal(!showEditStadiumModal);
+          }}
+        >
+          Edytuj stadion
+        </Button>
       </div>
       {/* Modals */}
+      {/* Add city */}
       <Modal
         title="Dodaj miasto"
         open={showAddCityModal}
@@ -242,6 +266,7 @@ const Locations = () => {
           </Form.Item>
         </Form>
       </Modal>
+      {/* Add Stadium */}
       <Modal
         title="Dodaj stadion"
         open={showAddStadiumModal}
@@ -264,6 +289,63 @@ const Locations = () => {
           <Form.Item
             label="Nazwa stadonu"
             name="name"
+            rules={[
+              { required: true, message: "Proszę podać nazwę stadionu!" },
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Liczność sektoru gospodarzy"
+            name="hostCapacity"
+            rules={[{ required: true, message: "Proszę podać liczbę!" }]}
+          >
+            <InputNumber min={0} />
+          </Form.Item>
+          <Form.Item
+            label="Liczność sektoru gości"
+            name="guestCapacity"
+            rules={[{ required: true, message: "Proszę podać liczbę!" }]}
+          >
+            <InputNumber min={0} />
+          </Form.Item>
+          <Form.Item
+            label="Lokalizacja"
+            name="cityName"
+            rules={[{ required: true, message: "Proszę podać nazwę miasta!" }]}
+          >
+            <Select options={cityOptions} />
+          </Form.Item>
+          <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
+            <Button type="primary" className="bg-blue-700" htmlType="submit">
+              Dodaj
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+      {/* Edit stadium */}
+      <Modal
+        title="Edytuj stadion"
+        open={showEditStadiumModal}
+        // onOk={handleAddCity}
+        onCancel={handleEditStadiumCancel}
+        footer={[
+          <Button key="back" onClick={handleEditStadiumCancel}>
+            Zamknij
+          </Button>,
+        ]}
+        width={900}
+      >
+        <Form
+          name="addStadium"
+          labelCol={{ span: 8 }}
+          wrapperCol={{ span: 8 }}
+          className="bg-dutchwhite p-4"
+          onFinish={onEditStadiumFormSubmit}
+        >
+          <Form.Item
+            label="Id stadionu"
+            name="id"
             rules={[
               { required: true, message: "Proszę podać nazwę stadionu!" },
             ]}

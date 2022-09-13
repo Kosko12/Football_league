@@ -19,6 +19,7 @@ router.delete('/match', mainController.deleteMatch);
 router.get('/stadium', mainController.getStadium);
 router.get('/stadium/:name', mainController.getStadiumByName);
 router.post('/stadium', mainController.postStadium);
+router.patch('/stadium', mainController.patchStadium);
 router.delete('/stadium', mainController.deleteStadium)
 
 router.get('/city', mainController.getCity);
@@ -41,6 +42,7 @@ router.get('/contract', mainController.getContract)
 router.delete('/contract', mainController.deleteContract)
 
 router.post('/player', mainController.postPlayer)
+router.patch('/player', mainController.patchPlayer)
 router.get('/players', mainController.getPlayers)
 router.delete('/player', mainController.deletePlayer)
 
