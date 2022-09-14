@@ -1,15 +1,35 @@
 const neo4j = require("neo4j-driver");
 
-const driver = neo4j.driver(process.env.DB_URI, neo4j.auth.basic(process.env.DB_LOGIN, process.env.DB_PASS), { disableLosslessIntegers: true });
+const driver = neo4j.driver(
+  process.env.DB_URI,
+  neo4j.auth.basic(process.env.DB_LOGIN, process.env.DB_PASS),
+  { disableLosslessIntegers: true }
+);
 // const session = driver.session({ database: "neo4j" });
 
 exports.postTeam = async (req, res, next) => {
-
   const session = driver.session({ database: "neo4j" });
-
+  let ifExists = [];
   try {
-    const writeQuery = 
-      `MERGE (t:Team {name: '${req.body.name}'})
+    const writeQuery = `MATCH (t: Team)
+    where t.name = '${req.body.name}'
+    return t`;
+    const writeResult = await session.writeTransaction((tx) =>
+      tx.run(writeQuery)
+    );
+    writeResult.records.forEach((record) => {
+      const t = record.toObject();
+      console.log(`New sth: ${t}`);
+      ifExists.push(t);
+    });
+    console.log("if exists ", ifExists);
+    console.log("if exists length ", ifExists.length);
+  } catch (err) {
+    console.log(err);
+  }
+  if (ifExists.length < 1) {
+    try {
+      const writeQuery = `MERGE (t:Team {name: '${req.body.name}'})
       MERGE (c: City {name: '${req.body.city}'})
       MERGE (s: Stadium {name: '${req.body.stadium}'})
       MERGE (t)-[:FROM]->(c)
@@ -17,46 +37,47 @@ exports.postTeam = async (req, res, next) => {
       MERGE (s)-[:LOCATED_IN]->(c)
       RETURN t`;
 
-    // Write transactions allow the driver to handle retries and transient errors
-    const writeResult = await session.writeTransaction((tx) =>
-      tx.run(writeQuery)
-    );
-    writeResult.records.forEach((record) => {
-      const t = record.get("t");
-      console.log(`Created team: ${t.properties.name}`);
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json({
-      message: err.message,
-    });
-  } finally {
-    session.close();
-  }
-  return res.status(200).json({
+      // Write transactions allow the driver to handle retries and transient errors
+      const writeResult = await session.writeTransaction((tx) =>
+        tx.run(writeQuery)
+      );
+      writeResult.records.forEach((record) => {
+        const t = record.get("t");
+        console.log(`Created team: ${t.properties.name}`);
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(400).json({
+        message: err.message,
+      });
+    } finally {
+      session.close();
+    }
+    return res.status(200).json({
       message: "created!",
     });
+  } else {
+    res.status(400).json({
+      message: "Zespół juz istnieje!",
+    });
+  }
 };
 exports.getTeam = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   try {
     const readQuery = `MATCH (t:Team) return t.name as teamName`;
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
-      console.log(`Found person: ${record.get('teamName')}`);
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-        arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
   } finally {
     session.close();
-
   }
 };
 exports.getTeams = async (req, res, next) => {
@@ -69,53 +90,46 @@ exports.getTeams = async (req, res, next) => {
     SIZE((t)-[:PLAY_IN]->(:FootballMatch)) as matches,
     s.name as stadium
     `;
-    // const readQuery = `MATCH (s:Sponsor) 
+    // const readQuery = `MATCH (s:Sponsor)
     // return distinct(s.name) as sponsorName,
     // SIZE((s)-[:SPONSORS]->(:Team)) as sponsoredClubs
     // ORDER BY sponsorName
     // `;
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-        arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
   } finally {
     session.close();
-
   }
 };
-exports.deleteTeam = async(req, res, next) => {
+exports.deleteTeam = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   try {
-
     const readQuery = `MATCH (s : Team {name: '${req.body.name}'})
     detach delete s;
     `;
-  
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
     res.status(400).json({
-      'message': 'something went wrong...'
-    })
+      message: "something went wrong...",
+    });
   } finally {
     session.close();
-
   }
 };
 exports.getGuestForMatch = async (req, res, next) => {
@@ -125,25 +139,21 @@ exports.getGuestForMatch = async (req, res, next) => {
     const readQuery = `MATCH (t:Team) 
     WHERE NOT t.name = '${req.params.name}'
     return t.name as teamName`;
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
-      console.log(`Found person: ${record.get('teamName')}`);
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-        arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
   } finally {
     session.close();
-
   }
 };
 
-exports.postMatch = async(req, res, next) => {
+exports.postMatch = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
 
@@ -166,13 +176,12 @@ exports.postMatch = async(req, res, next) => {
       const t = record.toObject();
       console.log(`New sth: ${t}`);
       arrayToReturn.push(record.toObject());
-
     });
     console.log(arrayToReturn);
     return;
     res.status(200).json({
-      'data': arrayToReturn
-  })
+      data: arrayToReturn,
+    });
   } catch (err) {
     console.error(err);
     res.status(400).json({
@@ -194,60 +203,71 @@ exports.getMatch = async (req, res, next) => {
     return ID(m) as id, t1.name as host, 
     t2.name as guest, m.dateAt as endsAt, st.name as stadium
     `;
-  
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
   } finally {
     session.close();
-
   }
 };
-exports.deleteMatch = async(req, res, next) => {
+exports.deleteMatch = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   try {
-
     const readQuery = `
     MATCH (s : FootballMatch)
     where ID(s) = ${req.body.id}
     detach delete s;
     `;
-  
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
     res.status(400).json({
-      'message': 'something went wrong...'
-    })
+      message: "something went wrong...",
+    });
   } finally {
     session.close();
-
   }
 };
 //STADIUM
-exports.postStadium = async(req, res, next) => {
+exports.postStadium = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
-
+  let ifExists = [];
   try {
-    const writeQuery = `
+    const writeQuery = `MATCH (so: Stadium)
+    where so.name = '${req.body.name}'
+    return so`;
+    const writeResult = await session.writeTransaction((tx) =>
+      tx.run(writeQuery)
+    );
+    writeResult.records.forEach((record) => {
+      const t = record.toObject();
+      console.log(`New sth: ${t}`);
+      ifExists.push(t);
+    });
+    console.log("if exists ", ifExists);
+    console.log("if exists length ", ifExists.length);
+  } catch (err) {
+    console.log(err);
+  }
+  if (ifExists.length < 1) {
+    try {
+      const writeQuery = `
     MATCH (c: City {name: '${req.body.cityName}'})
     MERGE (s: Stadium {name:'${req.body.name}'})
     MERGE (s)-[:LOCATED_IN]->(c)
@@ -257,29 +277,33 @@ exports.postStadium = async(req, res, next) => {
     MERGE (sec2)-[:PART_OF]->(s)
     return s`;
 
-    // Write transactions allow the driver to handle retries and transient errors
-    const writeResult = await session.writeTransaction((tx) =>
-      tx.run(writeQuery)
-    );
-    writeResult.records.forEach((record) => {
-      const t = record.toObject();
-      console.log(`New sth: ${t}`);
-      arrayToReturn.push(record.toObject());
-
-    });
-    res.status(200).json({
-      'data': arrayToReturn
-  })
-  } catch (err) {
-    console.error(err);
+      // Write transactions allow the driver to handle retries and transient errors
+      const writeResult = await session.writeTransaction((tx) =>
+        tx.run(writeQuery)
+      );
+      writeResult.records.forEach((record) => {
+        const t = record.toObject();
+        console.log(`New sth: ${t}`);
+        arrayToReturn.push(record.toObject());
+      });
+      res.status(200).json({
+        data: arrayToReturn,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(400).json({
+        message: err.message,
+      });
+    } finally {
+      session.close();
+    }
+  } else {
     res.status(400).json({
-      message: err.message,
+      message: "Stadion juz istnieje!",
     });
-  } finally {
-    session.close();
   }
 };
-exports.patchStadium = async(req, res, next) => {
+exports.patchStadium = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
 
@@ -306,11 +330,10 @@ exports.patchStadium = async(req, res, next) => {
       const t = record.toObject();
       console.log(`New sth: ${t}`);
       arrayToReturn.push(record.toObject());
-
     });
     res.status(200).json({
-      'data': arrayToReturn
-  })
+      data: arrayToReturn,
+    });
   } catch (err) {
     console.error(err);
     res.status(400).json({
@@ -334,21 +357,18 @@ exports.getStadium = async (req, res, next) => {
     s2.capacity as guestCapacity,
     c.name as cityName
     `;
-  
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
   } finally {
     session.close();
-
   }
 };
 exports.getStadiumByName = async (req, res, next) => {
@@ -359,54 +379,46 @@ exports.getStadiumByName = async (req, res, next) => {
         MATCH(c: City {name: '${req.params.name}'})
         WHERE (s)-[:LOCATED_IN]->(c)
         return s.name as stadiumName`;
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
-      console.log(`Found person: ${record.get('stadiumName')}`);
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
   } finally {
     session.close();
-
   }
 };
-exports.deleteStadium = async(req, res, next) => {
+exports.deleteStadium = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   try {
-
     const readQuery = `MATCH (s : Stadium {name: '${req.body.name}'})
     detach delete s;
     `;
-  
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
     res.status(400).json({
-      'message': 'something went wrong...'
-    })
+      message: "something went wrong...",
+    });
   } finally {
     session.close();
-
   }
 };
 
 //City
-exports.postCity = async(req, res, next) => {
+exports.postCity = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
 
@@ -423,11 +435,10 @@ exports.postCity = async(req, res, next) => {
       const t = record.toObject();
       console.log(`New sth: ${t}`);
       arrayToReturn.push(record.toObject());
-
     });
     res.status(200).json({
-      'data': arrayToReturn
-  })
+      data: arrayToReturn,
+    });
   } catch (err) {
     console.error(err);
     res.status(400).json({
@@ -442,21 +453,17 @@ exports.getCity = async (req, res, next) => {
   let arrayToReturn = [];
   try {
     const readQuery = `MATCH (t:City) return t.name as clubName`;
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
-      console.log(`Found person: ${record.get('clubName')}`);
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
   } finally {
     session.close();
-
   }
 };
 exports.getCitiesWithAdditionalInfo = async (req, res, next) => {
@@ -467,53 +474,46 @@ exports.getCitiesWithAdditionalInfo = async (req, res, next) => {
     return distinct(c.name) as cityName,
     SIZE((:Team)-[:FROM]->(c)) as teams,
     SIZE((:Stadium)-[:LOCATED_IN]->(c)) as stadiums`;
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
   } finally {
     session.close();
-
   }
 };
-exports.deleteCity = async(req, res, next) => {
+exports.deleteCity = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   try {
-
     const readQuery = `MATCH (s : City {name: '${req.body.name}'})
     detach delete s;
     `;
-  
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
     res.status(400).json({
-      'message': 'something went wrong...'
-    })
+      message: "something went wrong...",
+    });
   } finally {
     session.close();
-
   }
 };
 
 //SPONSOR
-exports.postSponsor = async(req, res, next) => {
+exports.postSponsor = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
 
@@ -529,11 +529,10 @@ exports.postSponsor = async(req, res, next) => {
     writeResult.records.forEach((record) => {
       const t = record.toObject();
       arrayToReturn.push(record.toObject());
-
     });
     res.status(200).json({
-      arrayToReturn
-  })
+      arrayToReturn,
+    });
   } catch (err) {
     console.error(err);
     res.status(400).json({
@@ -547,7 +546,6 @@ exports.getSponsor = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   try {
-
     const readQuery = `MATCH (s:Sponsor) 
     return distinct(s.name) as sponsorName,
     SIZE((s)-[:SPONSORS]->(:Team)) as sponsoredClubs
@@ -555,58 +553,51 @@ exports.getSponsor = async (req, res, next) => {
     `;
 
     // MATCH (s:Sponsor)-[r:SPONSORS]->(t:Team)
-    // return s.name as sponsorName, count(r) 
-  
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+    // return s.name as sponsorName, count(r)
+
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
     res.status(400).json({
-      'message': 'something went wrong...'
-    })
+      message: "something went wrong...",
+    });
   } finally {
     session.close();
-
   }
 };
-exports.deleteSponsor = async(req, res, next) => {
+exports.deleteSponsor = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   try {
-
     const readQuery = `MATCH (s:Sponsor {name: '${req.params.name}'}) 
     detach delete s;
     `;
-  
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
     res.status(400).json({
-      'message': 'something went wrong...'
-    })
+      message: "something went wrong...",
+    });
   } finally {
     session.close();
-
   }
 };
 
 //REFEREE
-exports.postReferee = async(req, res, next) => {
+exports.postReferee = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
 
@@ -625,11 +616,10 @@ exports.postReferee = async(req, res, next) => {
       const t = record.toObject();
       console.log(`New sth: ${t}`);
       arrayToReturn.push(record.toObject());
-
     });
     res.status(200).json({
-      'data': arrayToReturn
-  })
+      data: arrayToReturn,
+    });
   } catch (err) {
     console.error(err);
     res.status(400).json({
@@ -648,54 +638,47 @@ exports.getReferee = async (req, res, next) => {
     return distinct(p.name) as refereeName,
     p.refId as refId,
     p.age as age,
-    SIZE((p)-[:REFEREE]->(c)) as matches`
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+    SIZE((p)-[:REFEREE]->(c)) as matches`;
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       console.log(record);
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
   } finally {
     session.close();
-
   }
 };
-exports.deleteReferee = async(req, res, next) => {
+exports.deleteReferee = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   try {
-
     const readQuery = `MATCH (s : Referee {refId: '${req.body.id}'})
     detach delete s;
     `;
-  
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
     res.status(400).json({
-      'message': 'something went wrong...'
-    })
+      message: "something went wrong...",
+    });
   } finally {
     session.close();
-
   }
 };
 // CONTRACT
-exports.postContract = async(req, res, next) => {
+exports.postContract = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
 
@@ -716,11 +699,10 @@ exports.postContract = async(req, res, next) => {
       const t = record.toObject();
       console.log(`New sth: ${t}`);
       arrayToReturn.push(record.toObject());
-
     });
     res.status(200).json({
-      arrayToReturn
-  })
+      arrayToReturn,
+    });
   } catch (err) {
     console.error(err);
     res.status(400).json({
@@ -741,57 +723,50 @@ exports.getContract = async (req, res, next) => {
     where exists(rel.endsAt)
     return distinct(s.name) as sponsorName, t.name as clubName, datetime(rel.endsAt) as endsAt
     `;
-  
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
     res.status(400).json({
-      'message': 'something went wrong...'
-    })
+      message: "something went wrong...",
+    });
   } finally {
     session.close();
-
   }
 };
-exports.deleteContract = async(req, res, next) => {
+exports.deleteContract = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   try {
-
     const readQuery = `MATCH (s : Sponsor {name: '${req.body.sponsorName}'})-[rel: SPONSORS]->(t: Team {name: '${req.body.clubName}'}) 
     delete rel;
     `;
-  
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
     res.status(400).json({
-      'message': 'something went wrong...'
-    })
+      message: "something went wrong...",
+    });
   } finally {
     session.close();
-
   }
 };
 
 //PLAYER
-exports.postPlayer = async(req, res, next) => {
+exports.postPlayer = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   console.log(req.body);
@@ -811,11 +786,10 @@ exports.postPlayer = async(req, res, next) => {
       const t = record.toObject();
       console.log(`New sth: ${t}`);
       arrayToReturn.push(record.toObject());
-
     });
     res.status(200).json({
-      'data': arrayToReturn
-  })
+      data: arrayToReturn,
+    });
   } catch (err) {
     console.error(err);
     res.status(400).json({
@@ -825,11 +799,11 @@ exports.postPlayer = async(req, res, next) => {
     session.close();
   }
 };
-exports.patchPlayer = async(req,res, next) => {
+exports.patchPlayer = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   try {
-    const readQuery =  `
+    const readQuery = `
     MATCH (p1: Player)
     where ID(p1) = ${req.body.id}
     MATCH (t: Team {name: '${req.body.teamName}'})
@@ -838,23 +812,20 @@ exports.patchPlayer = async(req,res, next) => {
     MERGE (p1)-[rel: CONTRACTED_WITH {role: '${req.body.role}', salary: ${req.body.salary}, signedAt: datetime('${req.body.contractPeriod[0]}'), endsAt: datetime('${req.body.contractPeriod[1]}')}]->(t)
     return t, p1, rel
     `;
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
   } finally {
     session.close();
-
   }
-}
-exports.getPlayers = async(req,res, next) => {
+};
+exports.getPlayers = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   try {
@@ -866,53 +837,46 @@ exports.getPlayers = async(req,res, next) => {
     rel.signedAt as playSince,
     rel.endsAt as endsAt,
     c.name as teamName`;
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
   } finally {
     session.close();
-
   }
-}
-exports.deletePlayer = async(req, res, next) => {
+};
+exports.deletePlayer = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
   try {
-
     const readQuery = `MATCH (s : Player )
     where ID(s) = ${req.body.id}
     detach delete s;
     `;
-  
-    const readResult = await session.readTransaction((tx) =>
-      tx.run(readQuery)
-    );
+
+    const readResult = await session.readTransaction((tx) => tx.run(readQuery));
     readResult.records.forEach((record) => {
       arrayToReturn.push(record.toObject());
     });
     res.status(201).json({
-      arrayToReturn
-    })
+      arrayToReturn,
+    });
   } catch (error) {
     console.error("Something went wrong: ", error);
     res.status(400).json({
-      'message': 'something went wrong...'
-    })
+      message: "something went wrong...",
+    });
   } finally {
     session.close();
-
   }
 };
 //TODO: still
-exports.postPlayerContract = async(req, res, next) => {
+exports.postPlayerContract = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
 
@@ -933,11 +897,10 @@ exports.postPlayerContract = async(req, res, next) => {
       const t = record.toObject();
       console.log(`New sth: ${t}`);
       arrayToReturn.push(record.toObject());
-
     });
     res.status(200).json({
-      'data': arrayToReturn
-  })
+      data: arrayToReturn,
+    });
   } catch (err) {
     console.error(err);
     res.status(400).json({
@@ -947,8 +910,7 @@ exports.postPlayerContract = async(req, res, next) => {
     session.close();
   }
 };
-
-exports.postTicket = async(req, res, next) => {
+exports.postTicket = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
 
@@ -969,11 +931,10 @@ exports.postTicket = async(req, res, next) => {
       const t = record.toObject();
       console.log(`New sth: ${t}`);
       arrayToReturn.push(record.toObject());
-
     });
     res.status(200).json({
-      'data': arrayToReturn
-  })
+      data: arrayToReturn,
+    });
   } catch (err) {
     console.error(err);
     res.status(400).json({
@@ -983,8 +944,7 @@ exports.postTicket = async(req, res, next) => {
     session.close();
   }
 };
-
-exports.postSector = async(req, res, next) => {
+exports.postSector = async (req, res, next) => {
   const session = driver.session({ database: "neo4j" });
   let arrayToReturn = [];
 
@@ -1003,11 +963,10 @@ exports.postSector = async(req, res, next) => {
       const t = record.toObject();
       console.log(`New sth: ${t}`);
       arrayToReturn.push(record.toObject());
-
     });
     res.status(200).json({
-      'data': arrayToReturn
-  })
+      data: arrayToReturn,
+    });
   } catch (err) {
     console.error(err);
     res.status(400).json({

@@ -130,6 +130,7 @@ const Locations = () => {
     axios.post("/stadium", value).then((res) => {
     });
     setShowAddStadiumModal(!showAddStadiumModal);
+    setForceReload(!forceReload);
   };
 
   const onEditStadiumFormSubmit = (value) => {
