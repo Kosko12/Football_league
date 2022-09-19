@@ -256,7 +256,14 @@ const Locations = () => {
           <Form.Item
             label="Nazwa miasta"
             name="name"
-            rules={[{ required: true, message: "Proszę podać nazwę miasta!" }]}
+            rules={[{ required: true, message: "Proszę wypełnić!" }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            label="Kraj"
+            name="country"
+            rules={[{ required: true, message: "Proszę wypełnić!" }]}
           >
             <Input />
           </Form.Item>
@@ -313,7 +320,7 @@ const Locations = () => {
           <Form.Item
             label="Lokalizacja"
             name="cityName"
-            rules={[{ required: true, message: "Proszę podać nazwę miasta!" }]}
+            rules={[{ required: true, message: "Proszę wypełnić!" }]}
           >
             <Select options={cityOptions} />
           </Form.Item>
@@ -370,7 +377,7 @@ const Locations = () => {
           <Form.Item
             label="Lokalizacja"
             name="cityName"
-            rules={[{ required: true, message: "Proszę podać nazwę miasta!" }]}
+            rules={[{ required: true, message: "Proszę wypełnić!" }]}
           >
             <Select options={cityOptions} />
           </Form.Item>

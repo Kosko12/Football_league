@@ -162,7 +162,7 @@ exports.postMatch = async (req, res, next) => {
     MATCH (t1: Team {name: '${req.body.hostName}'})
     MATCH (t2: Team {name: '${req.body.guestName}'})
     MATCH (t1)-[:PLAYS_AT]->(st:Stadium)
-    MERGE (m: FootballMatch {dateAt: datetime('${req.body.date}')})
+    CREATE (m: FootballMatch {dateAt: datetime('${req.body.date}')})
     CREATE (t1)-[rel1: PLAY_IN {role: 'host'}]->(m)
     CREATE (t2)-[rel2: PLAY_IN {role: 'guest'}]->(m)
     CREATE (m)-[rel3: HOSTED_IN]->(st)
@@ -271,10 +271,10 @@ exports.postStadium = async (req, res, next) => {
     MATCH (c: City {name: '${req.body.cityName}'})
     MERGE (s: Stadium {name:'${req.body.name}'})
     MERGE (s)-[:LOCATED_IN]->(c)
-    MERGE (sec1: Sector {name: 'host', capacity: ${req.body.hostCapacity}})
-    MERGE (sec2: Sector {name: 'guest', capacity: ${req.body.guestCapacity}})
-    MERGE (sec1)-[:PART_OF]->(s)
-    MERGE (sec2)-[:PART_OF]->(s)
+    CREATE (sec1: Sector {name: 'host', capacity: ${req.body.hostCapacity}})
+    CREATE (sec2: Sector {name: 'guest', capacity: ${req.body.guestCapacity}})
+    CREATE (sec1)-[:PART_OF]->(s)
+    CREATE (sec2)-[:PART_OF]->(s)
     return s`;
 
       // Write transactions allow the driver to handle retries and transient errors
@@ -424,7 +424,7 @@ exports.postCity = async (req, res, next) => {
 
   try {
     const writeQuery = `
-    CREATE (c: City {name: '${req.body.name}', country: '${req.body.country}'})
+    MATCH (c: City {name: '${req.body.name}', country: '${req.body.country}'})
     return c as city`;
 
     // Write transactions allow the driver to handle retries and transient errors
@@ -774,8 +774,8 @@ exports.postPlayer = async (req, res, next) => {
   try {
     const writeQuery = `
     MATCH (t: Team {name: '${req.body.teamName}'})
-    MERGE (p: Player {name: '${req.body.playerName}', age: ${req.body.age}})
-    MERGE (p)-[rel: CONTRACTED_WITH {role: '${req.body.role}', salary: ${req.body.salary}, signedAt: datetime('${req.body.contractPeriod[0]}'), endsAt: datetime('${req.body.contractPeriod[1]}')}]->(t)
+    CREATE (p: Player {name: '${req.body.playerName}', age: ${req.body.age}})
+    CREATE (p)-[rel: CONTRACTED_WITH {role: '${req.body.role}', salary: ${req.body.salary}, signedAt: datetime('${req.body.contractPeriod[0]}'), endsAt: datetime('${req.body.contractPeriod[1]}')}]->(t)
     return t, p, rel`;
 
     // Write transactions allow the driver to handle retries and transient errors
